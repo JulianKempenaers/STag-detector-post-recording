@@ -1,0 +1,8 @@
+opencv-python
+numpy
+scikit-image
+scipy
+tqdm
+ttkbootstrap
+stag-python==1.1.0
+matplotlib>=3.3
