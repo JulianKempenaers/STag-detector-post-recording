@@ -11,7 +11,7 @@ This code keeps track of the n most recently detected tags and colour codes them
 STags are a stable Fiducial Marker System, designed by [Burak Benligiray](https://github.com/bbenligiray/stag), used for motion tracking of animals.  
 
  ## Compatibility Notes
-- [Installer](run_installer.sh) currently tested on **Windows**.
+- [Installer](run_installer.sh) currently tested on **Windows & macOS** 
 - Built in **Python**
 - Uses the **STag** library by [Burak Benligiray](https://github.com/bbenligiray/stag)for marker detection
 - Currently accepts .npz video formats acquired by the [SparseMotionCapture](https://github.com/JulianKempenaers/SparseMotionCapture?tab=readme-ov-file#sparsemotioncapture) recording software. Future upgrades plan to implement mp4 and avi compatibility. 
