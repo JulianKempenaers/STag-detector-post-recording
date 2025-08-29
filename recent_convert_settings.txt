@@ -1,1 +1,1 @@
-{'stag_libraries': [17, 19, 21, 23], 'filename_addon': 'just_testing_print_buffer', 'frame_reconstruction': False, 'n_cols': 21}
+{'stag_libraries': [17, 19, 21, 23], 'filename_addon': 'no_recentID', 'frame_reconstruction': False, 'n_cols': 1, 'display_recentID_bar': True}

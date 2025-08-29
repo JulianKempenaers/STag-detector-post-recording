@@ -28,8 +28,9 @@ def show_initial_info():
     root = tk.Tk()
     root.withdraw()  # Hide the root window
     messagebox.showinfo(
-        title="Prepare Your Data",
+        title="Reminder to prepare your data",
         message=(
+            "This is a reminder: \n\n"
             "Please place your videos in the 'Videos_to_analyse' folder.\n\n"
             "Each subfolder inside it should contain .npz files.\n"
             "The program will create one video per subfolder.\n\n"
@@ -69,9 +70,10 @@ def getOrder(x):
     except Exception:
         return 999999
 
-def runVideoTagDetection(colour_palette, stag_libraries, frame_reconstruction, filename_addon, n_cols):
+def runVideoTagDetection(colour_palette, stag_libraries, frame_reconstruction, filename_addon, n_cols, display_recentID_bar):
     if n_cols == 1:
         colour_coding = False
+        display_recentID_bar = False
     else:
         colour_coding = True
     fnames = [f for f in os.listdir('Videos_to_analyse')
@@ -98,7 +100,7 @@ def runVideoTagDetection(colour_palette, stag_libraries, frame_reconstruction, f
     args = [
         (fname, colour_palette, frame_reconstruction, filename_addon, n_cols, WIDTH, HEIGHT,
          display_width, display_height, input_resolution_factor, output_zoom_x, output_zoom_y,
-         output_dir, colour_coding, stag_libraries)
+         output_dir, colour_coding, stag_libraries, display_recentID_bar)
         for fname in fnames
     ]
 
@@ -198,7 +200,7 @@ def pad_to_size(image, target_width, target_height, pad_color=(0, 0, 0)):
 def process_single_video(args):
     (fname, colour_palette, frame_reconstruction, filename_addon, n_cols, WIDTH, HEIGHT,
      display_width, display_height, input_resolution_factor, output_zoom_x, output_zoom_y,
-     output_dir, colour_coding, stag_libraries, print_buffer, queue) = args
+     output_dir, colour_coding, stag_libraries, display_recentID_bar, print_buffer, queue) = args
 
  
 
@@ -247,7 +249,7 @@ def process_single_video(args):
                                        output_zoom_x, colour_coding)
                 resized_render = cv2.resize(render, (display_width, display_height), interpolation=cv2.INTER_NEAREST)
 
-                if colour_coding:
+                if display_recentID_bar:
                     text_bar = add_recentID_bar(recentIDs, resized_render)
                     resized_render = np.vstack((resized_render, text_bar))
 
@@ -310,7 +312,7 @@ def add_recentID_bar(recentIDs, image):
     font_scale = 1.2
 
     img_width = image.shape[1]
-    bar_height = num_rows * (box_height + box_margin)
+    bar_height = 210
     bar = np.ones((bar_height, img_width, 3), dtype=np.uint8) * 255  # white background
 
     for idx, (marker_id, color) in enumerate(recentIDs):
@@ -345,8 +347,9 @@ def run_main_processing(settings, print_buffer):
     filename_addon = settings["filename_addon"]
     frame_reconstruction = settings["frame_reconstruction"]
     n_cols = settings["n_cols"]
+    display_recentID_bar = settings["display_recentID_bar"]
     
-    args = runVideoTagDetection(colour_palette, stag_libraries, frame_reconstruction, filename_addon, n_cols)
+    args = runVideoTagDetection(colour_palette, stag_libraries, frame_reconstruction, filename_addon, n_cols, display_recentID_bar)
     video_names = [arg[0] for arg in args]
 
     manager = multiprocessing.Manager()  # explicitly multiprocessing.Manager()
