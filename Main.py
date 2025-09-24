@@ -19,7 +19,7 @@ import threading
 import tkinter as tk
 from tkinter import messagebox
 import time
-
+import zipfile
 
     
 
@@ -206,7 +206,6 @@ def process_single_video(args):
 
     recentIDs = []
     available_colours = colour_palette.copy()
-
     try:
         files = glob.glob(os.path.join('Videos_to_analyse', fname, '*.npz'))
         files = sorted(files, key=getOrder)
@@ -217,48 +216,60 @@ def process_single_video(args):
         out = cv2.VideoWriter(videoname, fourcc, 5, (display_width, display_height), isColor=True)
 
         for i, fn in enumerate(files):
-            npz_data = np.load(fn, allow_pickle=True)
+            try:
+                npz_data = np.load(fn, allow_pickle=True)
 
-            frame_ids = npz_data['frameid']
-            timestamps = npz_data['timestamp']
-            bsr_matrices = npz_data['bsr_matrix']
+                frame_ids = npz_data['frameid']
+                timestamps = npz_data['timestamp']
+                bsr_matrices = npz_data['bsr_matrix']
 
-            sorted_indices = np.argsort(frame_ids)
-            frame_ids = frame_ids[sorted_indices]
-            timestamps = timestamps[sorted_indices]
-            bsr_matrices = bsr_matrices[sorted_indices]
+                sorted_indices = np.argsort(frame_ids)
+                frame_ids = frame_ids[sorted_indices]
+                timestamps = timestamps[sorted_indices]
+                bsr_matrices = bsr_matrices[sorted_indices]
 
-            for j, bsr_matrix in enumerate(bsr_matrices):
-                coo = bsr_matrix.tocoo()
-                frame = np.zeros((bsr_matrix.shape[0], bsr_matrix.shape[1]), dtype=np.uint8)
-                frame[coo.row, coo.col] = coo.data.astype(np.uint8)
-                if j == 0:
-                    key_frame = frame.copy()
-                    image = key_frame
-                else:
-                    if frame_reconstruction:
-                        key_frame_overlay = key_frame.copy()
-                        key_frame_overlay[frame > 0] = frame[frame > 0]
-                        image = key_frame_overlay
+                for j, bsr_matrix in enumerate(bsr_matrices):
+                    coo = bsr_matrix.tocoo()
+                    frame = np.zeros((bsr_matrix.shape[0], bsr_matrix.shape[1]), dtype=np.uint8)
+                    frame[coo.row, coo.col] = coo.data.astype(np.uint8)
+                    if j == 0:
+                        key_frame = frame.copy()
+                        image = key_frame
                     else:
-                        image = frame.copy()
+                        if frame_reconstruction:
+                            key_frame_overlay = key_frame.copy()
+                            key_frame_overlay[frame > 0] = frame[frame > 0]
+                            image = key_frame_overlay
+                        else:
+                            image = frame.copy()
+                    if stag_libraries: #if any stag libraries were selected for detection
+                        img, render, corners, ids, recentIDs, available_colours = detect_markers_and_assign_colours(
+                            image, recentIDs, available_colours, display_width, display_height, colour_coding, stag_libraries, n_cols, print_buffer) 
+                        render = apply_overlay(img, render, corners, ids, recentIDs, input_resolution_factor,
+                                           output_zoom_x, colour_coding)
+                        resized_render = cv2.resize(render, (display_width, display_height), interpolation=cv2.INTER_NEAREST)
 
-                img, render, corners, ids, recentIDs, available_colours = detect_markers_and_assign_colours(
-                    image, recentIDs, available_colours, display_width, display_height, colour_coding, stag_libraries, n_cols, print_buffer)
-                render = apply_overlay(img, render, corners, ids, recentIDs, input_resolution_factor,
-                                       output_zoom_x, colour_coding)
-                resized_render = cv2.resize(render, (display_width, display_height), interpolation=cv2.INTER_NEAREST)
+                        if display_recentID_bar:
+                            text_bar = add_recentID_bar(recentIDs, resized_render)
+                            resized_render = np.vstack((resized_render, text_bar))
 
-                if display_recentID_bar:
-                    text_bar = add_recentID_bar(recentIDs, resized_render)
-                    resized_render = np.vstack((resized_render, text_bar))
-
-                frame_to_write = pad_to_size(resized_render, display_width, display_height)
-                out.write(frame_to_write)
-
-            # Send progress update after processing each npz file
-            queue.put((fname, i + 1, total_files))
-
+                        frame_to_write = pad_to_size(resized_render, display_width, display_height)
+                    else: 
+                        resized_render= cv2.resize(image, (display_width,display_height), interpolation=cv2.INTER_NEAREST)
+                        if resized_render.ndim==2:
+                            resized_render= cv2.cvtColor(resized_render, cv2.COLOR_GRAY2BGR)
+                        frame_to_write=resized_render
+                       
+                    out.write(frame_to_write)
+                      
+                # Send progress update after processing each npz file
+                queue.put((fname, i + 1, total_files))
+            #except zipfile.BadZipFile:  #video with 2 bees had a corrupted zip file that I wanted to skip
+            except Exception as e:
+                #print(f"Skipping corrupted file: {file}") 
+                queue.put((fname, i+1, total_files))
+                print_buffer.append(f"skipped {fn} due to {e} ")
+                continue    
 
 
     except Exception as e:
